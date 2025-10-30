@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Gastos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container-card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin: 1.5rem auto;
+            max-width: 90%;
+            transition: all 0.3s ease-in-out;
+        }
+        .container-card:hover {
+            box-shadow: 10px 15px rgba(0, 0, 0, 0.2);
+            transform: translateY(-5px);
+        }
+        .form-input, .form-select, .form-textarea {
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            width: 100%;
+            transition: all 0.2s ease-in-out;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #4b5563;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db;
+        }
+        .nav-btn {
+            background-color: #e5e7eb;
+            color: #4b5563;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .nav-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            transform: scale(1.05);
+        }
+        .table-header th {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .table-row td {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .chart-container {
+            width: 100%;
+            height: 300px;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #4b5563;
+        }
+        .status-select {
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+            width: 100%;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <div id="status-message" class="fixed top-5 left-1/2 -translate-x-1/2 bg-blue-500 text-white py-2 px-4 rounded-full shadow-lg z-50 hidden transition-opacity duration-300"></div>
+
+    <header class="text-center my-6">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">Sistema de Gestión de Gastos</h1>
+        <p class="text-gray-500 mt-2 text-lg">Administración de titulares, familiares y gastos</p>
+    </header>
+
+    <nav class="flex flex-wrap justify-center space-x-2 md:space-x-4 mb-8" id="main-nav-buttons">
+        <button class="nav-btn active" data-target="modulo-autenticacion">Login</button>
+    </nav>
+    
+    <div id="logout-container" class="text-center mb-4 hidden">
+        <button id="logout-btn" class="btn-secondary px-6 py-2 text-red-600 border border-red-300 hover:bg-red-50">
+            Cerrar Sesión <span id="user-role-display" class="font-bold ml-1 text-sm"></span>
+        </button>
+    </div>
+
+    <div id="app-container" class="space-y-8">
+
+        <div id="modulo-autenticacion" class="modulo container-card">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700 text-center">Iniciar Sesión / Registrarse</h2>
+            <p class="text-center text-sm text-gray-500 mb-6">El administrador es el único que puede registrar Titulares y Gastos. Los usuarios Titulares pueden registrarse aquí para hacer seguimiento.</p>
+            <div class="max-w-md mx-auto p-6 bg-gray-50 rounded-lg shadow-inner">
+                
+                <form id="auth-form" class="space-y-4 mb-6">
+                    <div>
+                        <label for="auth-cedula" class="block text-sm font-medium text-gray-700">Cédula (Usuario)</label>
+                        <input type="text" id="auth-cedula" required class="form-input mt-1" placeholder="Ej: 10000000 (El primer registro será ADMIN)">
+                    </div>
+                    <div>
+                        <label for="auth-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                        <input type="password" id="auth-password" required class="form-input mt-1" placeholder="Mínimo 6 caracteres">
+                    </div>
+                    <div class="flex justify-between items-center pt-4">
+                        <button type="button" id="register-btn" class="btn-secondary">Registrarse</button>
+                        <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                    </div>
+                </form>
+
+                <div id="change-password-area" class="hidden border-t pt-4 mt-4">
+                    <p class="text-sm font-semibold text-gray-600 mb-3">Opciones de Seguridad</p>
+                    <button type="button" id="open-change-password-modal-btn" class="btn-secondary w-full text-sm">
+                        Cambiar Mi Contraseña
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modulo-titulares" class="modulo container-card hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700">Registro de Titular y Familiares</h2>
+
+            <div class="mb-6">
+                <h3 class="text-xl font-semibold mb-4 text-gray-600">Buscar Titular Existente</h3>
+                <div class="flex mt-1 gap-2">
+                    <input type="text" id="buscador-titular" placeholder="Cédula, Nombre o Apellido" class="form-input flex-grow">
+                    <button id="buscar-titular-btn" class="btn-primary">Buscar</button>
+                </div>
+            </div>
+            
+            <div id="titular-new-form-container">
+                <h3 class="text-xl font-semibold mb-4 text-gray-600">Registro de Nuevo Titular (Crea Acceso Titular)</h3>
+                <form id="titular-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div>
+                        <label for="cedula" class="block text-sm font-medium text-gray-700">Cédula</label>
+                        <input type="text" id="cedula" name="cedula" required class="form-input mt-1">
+                    </div>
+                    <div>
+                        <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
+                        <input type="text" id="nombre" name="nombre" required class="form-input mt-1">
+                    </div>
+                    <div>
+                        <label for="apellido" class="block text-sm font-medium text-gray-700">Apellido</label>
+                        <input type="text" id="apellido" name="apellido" required class="form-input mt-1">
+                    </div>
+                    <div>
+                        <label for="vicerrectorado" class="block text-sm font-medium text-gray-700">Vicerrectorado</label>
+                        <select id="vicerrectorado" name="vicerrectorado" required class="form-select mt-1">
+                            <option value="">Seleccione...</option>
+                            <option value="Vpds">Vpds</option>
+                            <option value="Vpa">Vpa</option>
+                            <option value="Vpi">Vpi</option>
+                            <option value="Vpdr">Vpdr</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="condicion" class="block text-sm font-medium text-gray-700">Condición</label>
+                        <select id="condicion" name="condicion" required class="form-select mt-1">
+                            <option value="">Seleccione...</option>
+                            <option value="Activo">Activo</option>
+                            <option value="Jubilado">Jubilado</option>
+                            <option value="Pensionado">Pensionado</option>
+                            <option value="Contratado">Contratado</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3 flex justify-end items-center gap-4 mt-4">
+                        <button type="submit" id="guardar-titular-btn" class="btn-primary">Guardar Titular</button>
+                        <button type="button" id="limpiar-titular-btn" class="btn-secondary">Limpiar</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="familiares-section" class="hidden mt-8">
+                <h3 class="text-xl font-semibold mb-4 text-gray-600">Registro de Familiares para <span id="titular-nombre-familiar" class="text-blue-600"></span></h3>
+                <form id="familiar-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div>
+                            <label for="cedula-familiar" class="block text-sm font-medium text-gray-700">Cédula del Familiar</label>
+                            <input type="text" id="cedula-familiar" name="cedula-familiar" required class="form-input mt-1">
+                        </div>
+                        <div>
+                            <label for="nombre-familiar" class="block text-sm font-medium text-gray-700">Nombre del Familiar</label>
+                            <input type="text" id="nombre-familiar" name="nombre-familiar" required class="form-input mt-1">
+                        </div>
+                        <div>
+                            <label for="apellido-familiar" class="block text-sm font-medium text-gray-700">Apellido del Familiar</label>
+                            <input type="text" id="apellido-familiar" name="apellido-familiar" required class="form-input mt-1">
+                        </div>
+                        <div>
+                            <label for="parentesco" class="block text-sm font-medium text-gray-700">Parentesco</label>
+                            <select id="parentesco" name="parentesco" required class="form-select mt-1">
+                                <option value="">Seleccione...</option>
+                                <option value="Hijo(a)">Hijo(a)</option>
+                                <option value="Esposo(a)">Esposo(a)</option>
+                                <option value="Madre">Madre</option>
+                                <option value="Padre">Padre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="fecha-nacimiento" class="block text-sm font-medium text-gray-700">Fecha de Nacimiento</label>
+                            <input type="date" id="fecha-nacimiento" name="fecha-nacimiento" required class="form-input mt-1">
+                        </div>
+                        <div>
+                            <label for="carga-familiar" class="block text-sm font-medium text-gray-700">Carga Familiar (PDF)</label>
+                            <input type="file" id="carga-familiar" name="carga-familiar" accept="application/pdf" class="form-input mt-1">
+                        </div>
+                    </div>
+                    <div class="flex justify-end items-center gap-4 mt-4">
+                        <button type="submit" id="guardar-familiar-btn" class="btn-primary">Guardar Familiar</button>
+                    </div>
+                </form>
+
+                <div id="familiares-list" class="mt-8">
+                    <h4 class="text-lg font-semibold text-gray-600">Familiares Registrados:</h4>
+                    <ul id="familiares-ul" class="list-disc list-inside mt-2 space-y-2 text-gray-700">
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="modulo-gasto" class="modulo container-card hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700">Cargar Gasto</h2>
+            <div class="mb-6">
+                <label for="buscador-cedula" class="block text-sm font-medium text-gray-700">Buscar Titular por Cédula / Nombre</label>
+                <div class="flex mt-1 gap-2">
+                    <input type="text" id="buscador-cedula" placeholder="Cédula, Nombre o Apellido" class="form-input flex-grow">
+                    <button id="buscar-gasto-btn" class="btn-primary">Buscar</button>
+                </div>
+            </div>
+            <div id="gasto-form-container" class="hidden">
+                <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-blue-700">Titular: <span id="titular-info-gasto" class="font-bold"></span></p>
+                </div>
+                <div class="mb-4">
+                    <label for="gasto-para" class="block text-sm font-medium text-gray-700">Gasto para:</label>
+                    <select id="gasto-para" class="form-select mt-1 w-full" required>
+                        </select>
+                </div>
+                <form id="gasto-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div>
+                        <label for="fecha-gasto" class="block text-sm font-medium text-gray-700">Fecha del Gasto</label>
+                        <input type="date" id="fecha-gasto" required class="form-input mt-1">
+                    </div>
+                    <div>
+                        <label for="numero-factura" class="block text-sm font-medium text-gray-700">Número de Factura</label>
+                        <input type="text" id="numero-factura" required class="form-input mt-1">
+                    </div>
+                    <div>
+                        <label for="farmacia-clinica" class="block text-sm font-medium text-gray-700">Farmacia / Clínica</label>
+                        <input type="text" id="farmacia-clinica" required class="form-input mt-1">
+                    </div>
+                    <div>
+                        <label for="diagnostico" class="block text-sm font-medium text-gray-700">Diagnóstico</label>
+                        <input type="text" id="diagnostico" required class="form-input mt-1">
+                    </div>
+                    <div>
+                        <label for="tipo-gasto" class="block text-sm font-medium text-gray-700">Tipo de Gasto</label>
+                        <select id="tipo-gasto" required class="form-select mt-1">
+                            <option value="">Seleccione...</option>
+                            <option value="Medicina Variable">Medicina Variable</option>
+                            <option value="Medicina Permanente">Medicina Permanente</option>
+                            <option value="Lentes">Lentes</option>
+                            <option value="Consulta">Consulta</option>
+                            <option value="Examenes">Exámenes</option>
+                            <option value="Odontologia">Odontología</option>
+                            <option value="Hcm">HCM</option>
+                        </select>
+                    </div>
+                    <div id="medicamentos-permanentes-container" class="hidden">
+                        <label for="medicamentos-permanentes" class="block text-sm font-medium text-gray-700">Medicamentos Permanentes</label>
+                        <textarea id="medicamentos-permanentes" rows="3" placeholder="Ej: Aspirina, Ibuprofeno, Paracetamol" class="form-textarea mt-1"></textarea>
+                    </div>
+                    <div>
+                        <label for="monto-factura" class="block text-sm font-medium text-gray-700">Monto de Factura (Bs)</label>
+                        <input type="number" id="monto-factura" step="0.01" required class="form-input mt-1">
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <label for="foto-gasto" class="block text-sm font-medium text-gray-700">Adjuntar Fotos del Gasto</label>
+                        <input type="file" id="foto-gasto" accept="image/*" multiple class="form-input mt-1">
+                        <div id="foto-preview-container" class="mt-2 hidden flex flex-wrap gap-2">
+                            </div>
+                    </div>
+                    <div class="col-span-1 md:col-span-2 lg:col-span-3 flex justify-end items-center gap-4 mt-4">
+                        <button type="submit" id="guardar-gasto-btn" class="btn-primary">Guardar Gasto</button>
+                        <button type="button" id="limpiar-gasto-btn" class="btn-secondary">Limpiar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div id="modulo-reporte" class="modulo container-card hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700">Reporte de Gastos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label for="filtro-tipo-gasto" class="block text-sm font-medium text-gray-700">Tipo de Gasto</label>
+                    <select id="filtro-tipo-gasto" class="form-select mt-1 w-full" onchange="generarReporte()">
+                        <option value="todos">Todos</option>
+                        </select>
+                </div>
+                <div>
+                    <label for="filtro-vicerrectorado" class="block text-sm font-medium text-gray-700">Vicerrectorado</label>
+                    <select id="filtro-vicerrectorado" class="form-select mt-1 w-full" onchange="generarReporte()">
+                        <option value="todos">Todos</option>
+                        </select>
+                </div>
+                <div>
+                    <label for="filtro-condicion" class="block text-sm font-medium text-gray-700">Condición</label>
+                    <select id="filtro-condicion" class="form-select mt-1 w-full" onchange="generarReporte()">
+                        <option value="todos">Todos</option>
+                        </select>
+                </div>
+            </div>
+            <div class="flex justify-end mb-6">
+                <button id="export-csv-btn" class="btn-secondary bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-lg">
+                    Exportar a Excel (CSV)
+                </button>
+            </div>
+            <div class="chart-container mb-8">
+                <canvas id="gastos-chart"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg">
+                    <thead>
+                        <tr class="table-header bg-gray-50 text-gray-500 uppercase text-xs">
+                            <th>Cédula Titular</th>
+                            <th>Nombre y Apellido</th>
+                            <th>Vicerrectorado</th>
+                            <th>Condición</th>
+                            <th>Fecha</th>
+                            <th>Tipo de Gasto</th>
+                            <th class="text-right">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reporte-gastos-tbody" class="divide-y divide-gray-200 text-gray-800">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="modulo-busqueda" class="modulo container-card hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700">Seguimiento de Gastos</h2>
+            
+            <div id="search-input-area" class="mb-6">
+                <label for="buscador-cedula-reporte" class="block text-sm font-medium text-gray-700">Buscar Titular por Cédula / Nombre</label>
+                <div class="flex mt-1 gap-2">
+                    <input type="text" id="buscador-cedula-reporte" placeholder="Cédula, Nombre o Apellido" class="form-input flex-grow">
+                    <button id="buscar-reporte-btn" class="btn-primary">Buscar</button>
+                </div>
+            </div>
+            
+            <div id="gastos-titular-resultado" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-600">Gastos de <span id="titular-nombre-reporte" class="text-blue-600"></span></h3>
+                    <button id="admin-report-button" class="btn-primary bg-red-600 hover:bg-red-700 px-4 py-2 text-sm hidden">
+                        Reportar Problema
+                    </button>
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                    <h4 class="font-bold text-gray-700 mb-2">Medicamentos Permanentes:</h4>
+                    <p id="medicamentos-permanentes-list" class="text-sm text-gray-600"></p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg">
+                        <thead>
+                            <tr class="table-header bg-gray-50 text-gray-500 uppercase text-xs">
+                                <th>Fecha</th>
+                                <th>Tipo de Gasto</th>
+                                <th>Monto</th>
+                                <th>Mensaje Admin</th>
+                                <th>Estado</th>
+                                <th>Archivos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gastos-titular-tbody" class="divide-y divide-gray-200 text-gray-800">
+                            </tbody>
+                    </table>
+                </div>
+                
+                <div class="chart-container mt-8">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-600">Gastos Mensuales del Titular (Bs)</h3>
+                    <canvas id="gastos-titular-mensual-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="modulo-estadisticas" class="modulo container-card hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700">Estadísticas y Dashboard</h2>
+            <div id="stats-dashboard" class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="flex flex-col">
+                        <label for="filtro-year" class="block text-sm font-medium text-gray-700">Filtrar por Año</label>
+                        <select id="filtro-year" class="form-select mt-1 w-full"></select>
+                    </div>
+                    <div class="flex flex-col md:col-span-2">
+                        <label for="filtro-month" class="block text-sm font-medium text-gray-700">Filtrar por Mes</label>
+                        <select id="filtro-month" class="form-select mt-1 w-full">
+                            <option value="todos">Todos los meses</option>
+                            <option value="1">Enero</option>
+                            <option value="2">Febrero</option>
+                            <option value="3">Marzo</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Mayo</option>
+                            <option value="6">Junio</option>
+                            <option value="7">Julio</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="p-6 bg-blue-50 rounded-lg shadow-sm">
+                        <p class="text-lg font-semibold text-gray-700">Tasa Oficial del Dólar (API)</p>
+                        <p id="dolar-oficial" class="text-2xl font-extrabold text-blue-600 mt-2">Cargando...</p>
+                    </div>
+                    <div class="p-6 bg-green-50 rounded-lg shadow-sm">
+                        <p class="text-lg font-semibold text-gray-700">Monto Total de Gastos (Bs)</p>
+                        <p id="total-gastos-bs" class="text-2xl font-extrabold text-green-600 mt-2">Cargando...</p>
+                    </div>
+                    <div class="p-6 bg-purple-50 rounded-lg shadow-sm">
+                        <p class="text-lg font-semibold text-gray-700">Monto Total de Gastos (USD)</p>
+                        <p id="total-gastos-usd" class="text-2xl font-extrabold text-purple-600 mt-2">Cargando...</p>
+                    </div>
+                    <div class="p-6 bg-yellow-50 rounded-lg shadow-sm">
+                        <p class="text-lg font-semibold text-gray-700">Devolución Estimada (80% USD)</p>
+                        <p id="devolucion-estimada" class="text-2xl font-extrabold text-yellow-600 mt-2">Calculando...</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-gray-200">
+                    <div class="p-4 bg-red-50 rounded-lg shadow-sm md:col-span-1">
+                        <p class="text-lg font-semibold text-gray-700">Tasa Histórica Simulada (Ref.)</p>
+                        <p class="text-2xl font-extrabold text-red-600 mt-2">100.00 Bs/USD</p>
+                    </div>
+                    <div class="p-4 bg-red-50 rounded-lg shadow-sm md:col-span-2">
+                        <p class="text-lg font-semibold text-gray-700">Impacto Financiero por Variación del Dólar</p>
+                        <p id="impacto-dolar-simulado" class="text-2xl font-extrabold text-red-600 mt-2">Calculando...</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <div class="container-card p-4">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-600">Desglose por Vicerrectorado</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="table-header bg-gray-50 text-gray-500 uppercase text-xs">
+                                        <th>Vicerrectorado</th>
+                                        <th class="text-right">Gasto Total (Bs)</th>
+                                        <th class="text-right">Gasto Total (USD)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reporte-vicerrectorado-tbody" class="divide-y divide-gray-200">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="container-card p-4">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-600">Desglose por Condición y Devolución</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="table-header bg-gray-50 text-gray-500 uppercase text-xs">
+                                        <th>Condición</th>
+                                        <th class="text-right">Gasto (USD)</th>
+                                        <th class="text-right">Devolución Est. (USD)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reporte-condicion-tbody" class="divide-y divide-gray-200">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="container-card p-4">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-600">Distribución de Gastos</h3>
+                        <div class="chart-container">
+                            <canvas id="gastos-tipo-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="container-card p-4">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-600">Casos por Diagnóstico</h3>
+                        <div class="chart-container">
+                            <canvas id="diagnosticos-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="modulo-reporte-errores" class="modulo container-card hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700">Reportar Problemas / Errores</h2>
+            <p class="mb-4 text-gray-600">Si encuentra algún error, datos incorrectos o problemas de funcionamiento, por favor describa el problema a continuación. Este reporte será enviado al administrador del sistema.</p>
+            
+            <form id="error-report-form" class="space-y-4">
+                <div>
+                    <label for="error-details" class="block text-sm font-medium text-gray-700">Detalles del Problema:</label>
+                    <textarea id="error-details" rows="5" required class="form-textarea mt-1" placeholder="Ej: No me aparece el titular con cédula 12345678 en el reporte."></textarea>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="btn-primary bg-red-600 hover:bg-red-700">Enviar Reporte</button>
+                </div>
+            </form>
+        </div>
+        
+        <div id="modulo-mantenimiento" class="modulo container-card hidden">
+            <h2 class="text-2xl font-bold mb-6 text-red-700">Módulo de Mantenimiento (ADMIN)</h2>
+            <p class="mb-6 text-gray-600">Esta sección es para el reseteo de datos de prueba. Utilícela con precaución.</p>
+
+            <div class="p-6 bg-red-50 border border-red-200 rounded-lg space-y-4">
+                <h3 class="text-xl font-semibold text-red-600">Eliminación de Datos</h3>
+                <p class="text-sm text-red-800">
+                    Al hacer clic, se eliminarán **TODOS** los **Titulares**, **Familiares**, **Gastos** y sus **Claves de Acceso** asociados a su cuenta de Administrador. Su cuenta de Administrador se conservará.
+                </p>
+                <button id="reset-data-btn" class="btn-primary bg-red-700 hover:bg-red-800 w-full">
+                    RESET (Eliminar Todos Mis Datos de Gestión)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="expense-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h3 class="text-2xl font-bold mb-4 text-gray-800">Archivos Adjuntos del Gasto</h3>
+            <div id="modal-content-area" class="space-y-4">
+                <p class="text-gray-600">Detalles del Gasto: <span id="modal-gasto-info" class="font-semibold text-blue-600"></span></p>
+                <div id="modal-photos" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    </div>
+                <div id="modal-no-photos" class="hidden p-4 bg-yellow-100 rounded-lg">
+                    <p class="text-yellow-800">No hay fotos de facturas adjuntas a este gasto.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="image-viewer-modal" class="modal">
+        <div class="modal-content bg-transparent p-0 max-w-4xl">
+            <span class="close-btn text-white text-3xl" onclick="closeImageViewer()">&times;</span>
+            <div class="bg-white p-4 rounded-lg shadow-lg">
+                   <h4 id="viewer-title" class="text-lg font-semibold mb-2 text-gray-800"></h4>
+                   <img id="viewer-image" src="" alt="Factura Ampliada" class="w-full h-auto object-contain rounded-md border border-gray-300 max-h-[80vh]">
+            </div>
+        </div>
+    </div>
+    
+    <div id="action-confirm-modal" class="modal">
+        <div class="modal-content max-w-sm">
+            <h3 id="action-title" class="text-xl font-bold mb-4"></h3>
+            <p id="action-message" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end gap-3">
+                <button id="action-cancel-btn" class="btn-secondary">Cancelar</button>
+                <button id="action-confirm-btn" class="btn-primary">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="password-change-modal" class="modal">
+        <div class="modal-content max-w-lg">
+            <span class="close-btn" onclick="closePasswordModal()">&times;</span>
+            <h3 class="text-2xl font-bold mb-4 text-gray-800">Cambiar Contraseña de Acceso</h3>
+            <p class="text-gray-600 mb-4">Ingrese su contraseña actual y una nueva para asegurar su cuenta.</p>
+
+            <form id="password-change-form" class="space-y-4">
+                <div>
+                    <label for="old-password" class="block text-sm font-medium text-gray-700">Contraseña Actual</label>
+                    <input type="password" id="old-password" required class="form-input mt-1">
+                </div>
+                <div>
+                    <label for="new-password" class="block text-sm font-medium text-gray-700">Nueva Contraseña (mín. 6 caracteres)</label>
+                    <input type="password" id="new-password" required minlength="6" class="form-input mt-1">
+                </div>
+                <div>
+                    <label for="confirm-new-password" class="block text-sm font-medium text-gray-700">Confirmar Nueva Contraseña</label>
+                    <input type="password" id="confirm-new-password" required minlength="6" class="form-input mt-1">
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="btn-primary">Actualizar Contraseña</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const API_URL = 'http://127.0.0.1:5000'; 
+        
+        // --- CONSTANTES PARA ESTADOS ---
+        const ESTADOS_GASTO = ['Recibido', 'Procesado', 'Con Errores', 'Enviado a la Universidad', 'Pagado'];
+        const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+
+        // --- ⚙️ FUNCIONES GENERALES Y UTILITYS ⚙️ ---
+        
+        const decodeToken = (token) => {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        };
+
+        const getUserRole = () => {
+            const token = localStorage.getItem('authToken');
+            if (!token) return 'unauthenticated';
+            const payload = decodeToken(token);
+            return payload ? payload.user_rol : 'unauthenticated';
+        };
+        
+        const getUserCedula = () => {
+            const token = localStorage.getItem('authToken');
+            if (!token) return null;
+            const payload = decodeToken(token);
+            return payload ? payload.user_cedula : null;
+        };
+
+
+        const isAuthenticated = () => {
+            return getUserRole() !== 'unauthenticated';
+        };
+
+        const formatCurrency = (amount) => {
+            if (typeof amount !== 'number' || isNaN(amount)) {
+                return 'N/A';
+            }
+            return new Intl.NumberFormat('es-VE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(amount);
+        };
+
+        const showStatus = (message, isError = false) => {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.classList.remove('hidden', 'bg-blue-500', 'bg-red-500');
+            statusDiv.classList.add(isError ? 'bg-red-500' : 'bg-blue-500', 'flex');
+            setTimeout(() => {
+                statusDiv.classList.remove('flex');
+                statusDiv.classList.add('hidden');
+            }, 3000);
+        };
+        
+        class ApiService {
+            constructor(apiUrl) {
+                this.apiUrl = apiUrl;
+            }
+
+            getHeaders(isMultipart = false) {
+                const headers = {
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                };
+                if (!isMultipart) {
+                    headers['Content-Type'] = 'application/json';
+                }
+                return headers;
+            }
+
+            async request(endpoint, method = 'GET', data = null, isMultipart = false) {
+                const url = `${this.apiUrl}${endpoint}`;
+                const options = {
+                    method: method,
+                    headers: this.getHeaders(isMultipart)
+                };
+
+                if (data && method !== 'GET' && method !== 'DELETE') {
+                    options.body = isMultipart ? data : JSON.stringify(data);
+                }
+                
+                try {
+                    const response = await fetch(url, options);
+                    const isJson = response.headers.get('content-type')?.includes('application/json');
+                    const result = isJson ? await response.json() : { message: `Respuesta HTTP ${response.status}` };
+                    
+                    if (!response.ok) {
+                        throw new Error(result.message || `Error del servidor: ${response.status}`);
+                    }
+                    
+                    return result;
+
+                } catch (error) {
+                    throw error;
+                }
+            }
+        }
+
+        const api = new ApiService(API_URL);
+
+        
+        const modules = document.querySelectorAll('.modulo');
+        const showModule = (targetId) => {
+            modules.forEach(mod => mod.classList.add('hidden'));
+            document.getElementById(targetId).classList.remove('hidden');
+            
+            const navButtons = document.getElementById('main-nav-buttons').querySelectorAll('.nav-btn');
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.querySelector(`[data-target="${targetId}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            if (targetId === 'modulo-reporte') generarReporte();
+            if (targetId === 'modulo-estadisticas') populateYearFilter();
+            if (targetId === 'modulo-busqueda' && getUserRole() === 'titular_view') {
+                document.getElementById('buscador-cedula-reporte').value = getUserCedula();
+                document.getElementById('buscar-reporte-btn').click();
+            }
+        };
+        
+        const toggleCrudButtons = (role) => {
+            const is_admin = role === 'admin';
+            const crudElements = [
+                document.getElementById('guardar-titular-btn'),
+                document.getElementById('guardar-familiar-btn'),
+                document.getElementById('guardar-gasto-btn')
+            ];
+            
+            crudElements.forEach(el => {
+                if (el) el.classList.toggle('hidden', !is_admin);
+            });
+        };
+
+        const updateUIForAuth = () => {
+            const role = getUserRole();
+            const isAuth = role !== 'unauthenticated';
+            const loginModule = document.getElementById('modulo-autenticacion');
+            const logoutContainer = document.getElementById('logout-container');
+            const mainNavButtons = document.getElementById('main-nav-buttons');
+            const functionalModuleIds = ['modulo-titulares', 'modulo-gasto', 'modulo-reporte', 'modulo-busqueda', 'modulo-estadisticas', 'modulo-reporte-errores', 'modulo-mantenimiento'];
+            const userRoleDisplay = document.getElementById('user-role-display');
+            const changePasswordArea = document.getElementById('change-password-area');
+            
+            userRoleDisplay.textContent = isAuth ? `(${role.toUpperCase()})` : '';
+            toggleCrudButtons(role);
+
+            mainNavButtons.innerHTML = '';
+            
+            if (isAuth) {
+                loginModule.classList.add('hidden');
+                logoutContainer.classList.remove('hidden');
+                changePasswordArea.classList.toggle('hidden', role !== 'titular_view');
+
+                const allButtons = [
+                    { target: 'modulo-titulares', text: 'Titulares', roles: ['admin'] },
+                    { target: 'modulo-gasto', text: 'Cargar Gasto', roles: ['admin'] },
+                    { target: 'modulo-reporte', text: 'Reporte de Gastos', roles: ['admin'] },
+                    { target: 'modulo-estadisticas', text: 'Estadísticas', roles: ['admin'] },
+                    { target: 'modulo-busqueda', text: 'Seguimiento de Gastos', roles: ['admin', 'titular_view'] }, 
+                    { target: 'modulo-reporte-errores', text: 'Reportar Error', roles: ['admin', 'titular_view'] }, 
+                    { target: 'modulo-mantenimiento', text: 'Mantenimiento', roles: ['admin'] } 
+                ];
+                
+                let firstFunctionalModuleTarget = null;
+
+                allButtons.forEach(btnInfo => {
+                    if (btnInfo.roles.includes(role)) {
+                        const button = document.createElement('button');
+                        button.className = 'nav-btn';
+                        button.textContent = btnInfo.text;
+                        button.dataset.target = btnInfo.target;
+                        button.addEventListener('click', () => showModule(btnInfo.target));
+                        mainNavButtons.appendChild(button);
+                        
+                        document.getElementById(btnInfo.target).classList.add('hidden');
+                        
+                        if (!firstFunctionalModuleTarget) {
+                            firstFunctionalModuleTarget = btnInfo.target;
+                        }
+                    } else {
+                           const el = document.getElementById(btnInfo.target);
+                           if (el) el.classList.add('hidden');
+                    }
+                });
+
+                if (firstFunctionalModuleTarget) {
+                       showModule(firstFunctionalModuleTarget);
+                }
+                
+                const searchArea = document.getElementById('search-input-area');
+                if (role === 'titular_view') {
+                    if (searchArea) searchArea.classList.add('hidden');
+                } else {
+                    if (searchArea) searchArea.classList.remove('hidden');
+                }
+
+
+            } else {
+                loginModule.classList.remove('hidden');
+                logoutContainer.classList.add('hidden');
+                changePasswordArea.classList.add('hidden'); 
+                
+                const loginButton = document.createElement('button');
+                loginButton.className = 'nav-btn active';
+                loginButton.textContent = 'Login';
+                loginButton.dataset.target = 'modulo-autenticacion';
+                loginButton.addEventListener('click', () => showModule('modulo-autenticacion'));
+                mainNavButtons.appendChild(loginButton);
+                
+                showModule('modulo-autenticacion');
+
+                functionalModuleIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
+                });
+            }
+            populateStaticFilters(); 
+        };
+
+        const authForm = document.getElementById('auth-form');
+        const registerBtn = document.getElementById('register-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const cedula = document.getElementById('auth-cedula').value;
+            const password = document.getElementById('auth-password').value;
+            
+            try {
+                const result = await api.request(`/login`, 'POST', { cedula, password });
+
+                localStorage.setItem('authToken', result.token);
+                showStatus(result.message);
+                authForm.reset();
+                updateUIForAuth();
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        });
+
+        registerBtn.addEventListener('click', async () => {
+            const cedula = document.getElementById('auth-cedula').value;
+            const password = document.getElementById('auth-password').value;
+            
+            if (password.length < 6) {
+                   showStatus('La contraseña debe tener al menos 6 caracteres.', true);
+                   return;
+            }
+            
+            try {
+                const result = await api.request(`/register`, 'POST', { cedula, password });
+
+                showStatus(result.message);
+                authForm.reset();
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            showStatus('Sesión cerrada correctamente.');
+            updateUIForAuth();
+        });
+
+        document.addEventListener('DOMContentLoaded', updateUIForAuth);
+        
+        const populateStaticFilters = () => {
+            const tipoGastoOptions = [
+                'Medicina Variable', 'Medicina Permanente', 'Lentes', 'Consulta', 'Examenes', 'Odontologia', 'Hcm'
+            ];
+            const vicerrectoradoOptions = ['Vpds', 'Vpa', 'Vpi', 'Vpdr'];
+            const condicionOptions = ['Activo', 'Jubilado', 'Pensionado', 'Contratado'];
+
+            const fillSelect = (selectId, options) => {
+                const select = document.getElementById(selectId);
+                const defaultOption = select.querySelector('option[value="todos"]');
+                select.innerHTML = '';
+                if (defaultOption) select.appendChild(defaultOption);
+
+                options.forEach(optionText => {
+                    const option = document.createElement('option');
+                    option.value = optionText;
+                    option.textContent = optionText;
+                    select.appendChild(option);
+                });
+            };
+
+            fillSelect('filtro-tipo-gasto', tipoGastoOptions);
+            fillSelect('filtro-vicerrectorado', vicerrectoradoOptions);
+            fillSelect('filtro-condicion', condicionOptions);
+        };
+
+
+        const titularForm = document.getElementById('titular-form');
+        const familiaresSection = document.getElementById('familiares-section');
+        const titularNombreFamiliar = document.getElementById('titular-nombre-familiar');
+        const familiarForm = document.getElementById('familiar-form');
+        const familiaresList = document.getElementById('familiares-list');
+        const buscadorTitular = document.getElementById('buscador-titular');
+        const buscarTitularBtn = document.getElementById('buscar-titular-btn');
+        const limpiarTitularBtn = document.getElementById('limpiar-titular-btn');
+        let currentTitularId = null;
+
+
+        buscadorTitular.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && getUserRole() === 'admin') {
+                e.preventDefault();
+                buscarTitularBtn.click();
+            }
+        });
+
+        buscarTitularBtn.addEventListener('click', async () => {
+            if (!isAuthenticated()) { showStatus('Debe iniciar sesión para realizar esta acción.', true); return; }
+            const query = buscadorTitular.value.trim();
+            if (!query) {
+                showStatus('Por favor, ingrese Cédula, Nombre o Apellido.', true);
+                return;
+            }
+            try {
+                const titularData = await api.request(`/titulares/${query}`);
+                
+                const cedula = titularData.cedula; 
+                showStatus(`Titular ${titularData.nombre} ${titularData.apellido} encontrado.`);
+                currentTitularId = cedula;
+                titularNombreFamiliar.textContent = `${titularData.nombre} ${titularData.apellido}`;
+                familiaresSection.classList.remove('hidden');
+                renderFamiliaresList(currentTitularId);
+            } catch (error) {
+                showStatus(error.message, true);
+                familiaresSection.classList.add('hidden');
+            }
+        });
+        
+        limpiarTitularBtn.addEventListener('click', () => {
+            titularForm.reset();
+        });
+
+        titularForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (getUserRole() !== 'admin') { showStatus('Acceso denegado: Solo Administradores pueden guardar datos.', true); return; }
+            
+            const cedula = document.getElementById('cedula').value;
+            const nombre = document.getElementById('nombre').value;
+            const apellido = document.getElementById('apellido').value;
+            const vicerrectorado = document.getElementById('vicerrectorado').value;
+            const condicion = document.getElementById('condicion').value;
+
+            try {
+                await api.request(`/register-titular`, 'POST', { cedula: cedula, password: cedula });
+                const titularData = { cedula, nombre, apellido, vicerrectorado, condicion };
+
+                const result = await api.request(`/titulares`, 'POST', titularData);
+                
+                showStatus(result.message);
+                currentTitularId = cedula;
+                titularNombreFamiliar.textContent = `${nombre} ${apellido}`;
+                familiaresSection.classList.remove('hidden');
+                titularForm.reset();
+                renderFamiliaresList(currentTitularId);
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        });
+
+        /* === REPARACIÓN DEL MANEJO DEL PDF DE FAMILIAR Y ELIMINACIÓN === */
+
+        // 1. Acción de eliminación (FALTABA DEFINIR)
+        const deleteFamiliarAction = async (familiarId) => {
+            try {
+                const result = await api.request(`/familiares/${familiarId}`, 'DELETE');
+                showStatus(result.message);
+                renderFamiliaresList(currentTitularId); // Recarga la lista para mostrar el cambio
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        };
+
+        // 2. Event Listener de Formulario (CORREGIDO para usar FormData y la ruta /upload)
+        familiarForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (getUserRole() !== 'admin') { showStatus('Acceso denegado: Solo Administradores pueden guardar datos.', true); return; }
+            
+            const pdfFile = document.getElementById('carga-familiar').files[0];
+            
+            const formData = new FormData();
+            formData.append('cedulaTitular', currentTitularId);
+            formData.append('cedulaFamiliar', document.getElementById('cedula-familiar').value);
+            formData.append('nombreFamiliar', document.getElementById('nombre-familiar').value);
+            formData.append('apellidoFamiliar', document.getElementById('apellido-familiar').value);
+            formData.append('parentesco', document.getElementById('parentesco').value);
+            formData.append('fechaNacimiento', document.getElementById('fecha-nacimiento').value);
+            
+            if (pdfFile) {
+                formData.append('carga_familiar_pdf', pdfFile); 
+            }
+
+            try {
+                const result = await api.request(`/familiares/upload`, 'POST', formData, true); 
+                
+                showStatus(result.message);
+                familiarForm.reset();
+                renderFamiliaresList(currentTitularId);
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        });
+
+        // 3. Renderizado de la lista (CORREGIDO para usar el enlace de descarga directo)
+        const renderFamiliaresList = async (titularId) => {
+            const role = getUserRole();
+            try {
+                const ul = document.getElementById('familiares-ul');
+                ul.innerHTML = '';
+                const familiares = await api.request(`/familiares/${titularId}`); 
+                
+                familiares.forEach(f => {
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center bg-gray-50 p-3 rounded-md shadow-sm';
+                    
+                    let deleteButtonHtml = '';
+                    if (role === 'admin') {
+                           // El botón llama a openActionModal para confirmar la eliminación
+                           deleteButtonHtml = `<button class="btn-secondary px-3 py-1 text-sm text-red-600" data-id="${f.id}">Eliminar</button>`;
+                    }
+                    
+                    let viewPdfButton = '';
+                    const hasPdf = f.carga_familiar_pdf && f.carga_familiar_pdf.trim() !== '';
+
+                    if (hasPdf) {
+                        // Genera la URL real, usando solo el nombre de archivo (que debe estar en la DB)
+                        const pdfFilename = f.carga_familiar_pdf.split('/').pop();
+                        const pdfUrl = `${API_URL}/uploads/${pdfFilename}`; 
+                        
+                        // Uso de <a> para descarga/visualización directa
+                        viewPdfButton = `<a href="${pdfUrl}" target="_blank" class="btn-primary px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 ml-2" title="Ver archivo adjunto">Ver PDF</a>`;
+                    } else {
+                           viewPdfButton = `<span class="text-gray-400 text-xs ml-2">Sin Adjunto</span>`;
+                    }
+
+                    li.innerHTML = `
+                        <span>${f.nombre_familiar} ${f.apellido_familiar} (${f.parentesco})</span>
+                        <div class="flex items-center">
+                            ${viewPdfButton}
+                            ${deleteButtonHtml}
+                        </div>
+                    `;
+                    ul.appendChild(li);
+                });
+                familiaresList.classList.remove('hidden');
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        };
+
+        // 4. Lógica de Modal de Confirmación (FALTABA DEFINIR)
+        const actionConfirmModal = document.getElementById('action-confirm-modal');
+        const actionTitle = document.getElementById('action-title');
+        const actionMessage = document.getElementById('action-message');
+        const actionConfirmBtn = document.getElementById('action-confirm-btn');
+        const actionCancelBtn = document.getElementById('action-cancel-btn');
+        let pendingActionCallback = null;
+
+        const openActionModal = (title, message, confirmText, callback, isDestructive = false) => {
+            actionTitle.textContent = title;
+            actionMessage.textContent = message;
+            actionConfirmBtn.textContent = confirmText;
+            pendingActionCallback = callback;
+
+            actionConfirmBtn.classList.remove('bg-red-700', 'hover:bg-red-800', 'bg-blue-500', 'hover:bg-blue-600');
+            if (isDestructive) {
+                 actionConfirmBtn.classList.add('bg-red-700', 'hover:bg-red-800');
+            } else {
+                 actionConfirmBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            }
+            
+            actionConfirmModal.style.display = 'flex';
+        };
+
+        const closeActionModal = () => {
+            actionConfirmModal.style.display = 'none';
+            pendingActionCallback = null;
+        };
+
+        actionCancelBtn.onclick = closeActionModal;
+        actionConfirmBtn.onclick = () => {
+            if (pendingActionCallback) {
+                pendingActionCallback();
+            }
+            closeActionModal();
+        };
+        /* === FIN DE LA REPARACIÓN DEL MANEJO DEL PDF DE FAMILIAR === */
+
+
+        familiaresList.addEventListener('click', (e) => {
+            if (getUserRole() !== 'admin') { showStatus('Acceso denegado: Solo Administradores pueden eliminar datos.', true); return; }
+            
+            if (e.target.matches('.btn-secondary[data-id]')) {
+                const familiarId = e.target.dataset.id;
+                
+                openActionModal(
+                    'Confirmar Eliminación',
+                    '¿Está seguro de que desea eliminar a este familiar de forma permanente? Esta acción no se puede deshacer.',
+                    'Sí, Eliminar',
+                    // La función de callback que se ejecuta al confirmar
+                    () => deleteFamiliarAction(familiarId), 
+                    true // isDestructive
+                );
+            }
+        });
+
+        // --- Lógica de Cambio de Contraseña (sin cambios) ---
+        
+        const passwordChangeForm = document.getElementById('password-change-form');
+        const passwordChangeModal = document.getElementById('password-change-modal');
+        const openChangePasswordModalBtn = document.getElementById('open-change-password-modal-btn');
+        
+        const openPasswordModal = () => {
+             passwordChangeForm.reset();
+             passwordChangeModal.style.display = 'flex';
+        };
+
+        const closePasswordModal = () => {
+            passwordChangeModal.style.display = 'none';
+        };
+        
+        if (openChangePasswordModalBtn) {
+             openChangePasswordModalBtn.addEventListener('click', openPasswordModal);
+        }
+
+
+        passwordChangeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldPassword = document.getElementById('old-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmNewPassword = document.getElementById('confirm-new-password').value;
+            
+            if (newPassword !== confirmNewPassword) {
+                showStatus('La nueva contraseña y la confirmación no coinciden.', true);
+                return;
+            }
+            if (newPassword.length < 6) {
+                   showStatus('La nueva contraseña debe tener al menos 6 caracteres.', true);
+                   return;
+            }
+
+            try {
+                const result = await api.request(`/titular/password`, 'PUT', { old_password: oldPassword, new_password: newPassword });
+
+                showStatus(`¡Contraseña actualizada! Por favor, vuelva a iniciar sesión.`); 
+                closePasswordModal();
+                logoutBtn.click(); 
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        });
+
+
+        // Módulo Cargar Gasto
+        const buscadorCedulaGasto = document.getElementById('buscador-cedula');
+        const buscarGastoBtn = document.getElementById('buscar-gasto-btn');
+        const gastoFormContainer = document.getElementById('gasto-form-container');
+        const titularInfoGasto = document.getElementById('titular-info-gasto');
+        const gastoParaSelect = document.getElementById('gasto-para');
+        const gastoForm = document.getElementById('gasto-form');
+        const medicamentosPermanentesContainer = document.getElementById('medicamentos-permanentes-container');
+        const tipoGastoSelect = document.getElementById('tipo-gasto');
+        const fotoGastoInput = document.getElementById('foto-gasto');
+        const fotoPreviewContainer = document.getElementById('foto-preview-container');
+        let uploadedFiles = null; 
+        
+        buscadorCedulaGasto.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarGastoBtn.click();
+            }
+        });
+
+        buscarGastoBtn.addEventListener('click', async () => {
+            if (!isAuthenticated()) { showStatus('Debe iniciar sesión para realizar esta acción.', true); return; }
+            const query = buscadorCedulaGasto.value.trim();
+            if (!query) return;
+            try {
+                const titularData = await api.request(`/titulares/${query}`);
+                const cedula = titularData.cedula; 
+                
+                showStatus(`Titular ${titularData.nombre} ${titularData.apellido} encontrado.`);
+                gastoFormContainer.classList.remove('hidden');
+                titularInfoGasto.textContent = `${titularData.nombre} ${titularData.apellido}`;
+                currentTitularId = cedula;
+                await renderGastoParaSelect(cedula);
+            } catch (error) {
+                showStatus(error.message, true);
+                gastoFormContainer.classList.add('hidden');
+            }
+        });
+
+        const renderGastoParaSelect = async (cedula) => {
+            gastoParaSelect.innerHTML = '';
+            try {
+                const [titularRes, familiaresRes] = await Promise.all([
+                    api.request(`/titulares/${cedula}`),
+                    api.request(`/familiares/${cedula}`)
+                ]);
+                const titular = titularRes; 
+                const familiares = familiaresRes;
+                
+                const titularOption = document.createElement('option');
+                titularOption.value = titular.cedula;
+                titularOption.textContent = `${titular.nombre} ${titular.apellido} (Titular)`;
+                gastoParaSelect.appendChild(titularOption);
+
+                familiares.forEach(f => {
+                    const option = document.createElement('option');
+                    option.value = f.cedula_familiar;
+                    option.textContent = `${f.nombre_familiar} ${f.apellido_familiar} (${f.parentesco})`;
+                    gastoParaSelect.appendChild(option);
+                });
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        };
+
+        tipoGastoSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'Medicina Permanente') {
+                medicamentosPermanentesContainer.classList.remove('hidden');
+            } else {
+                medicamentosPermanentesContainer.classList.add('hidden');
+            }
+        });
+
+        fotoGastoInput.addEventListener('change', (e) => {
+            fotoPreviewContainer.innerHTML = '';
+            uploadedFiles = e.target.files; 
+            
+            if (uploadedFiles && uploadedFiles.length > 0) {
+                fotoPreviewContainer.classList.remove('hidden');
+                Array.from(uploadedFiles).forEach((file) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const img = document.createElement('img');
+                        img.src = reader.result; 
+                        img.title = file.name;
+                        img.className = 'w-24 h-24 object-cover rounded-md border border-gray-300';
+                        fotoPreviewContainer.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                showStatus(`${uploadedFiles.length} archivos listos para subida.`);
+            } else {
+                fotoPreviewContainer.classList.add('hidden');
+            }
+        });
+
+        const clearExpenseFields = () => {
+            document.getElementById('fecha-gasto').value = '';
+            document.getElementById('numero-factura').value = '';
+            document.getElementById('farmacia-clinica').value = '';
+            document.getElementById('diagnostico').value = '';
+            document.getElementById('tipo-gasto').value = '';
+            document.getElementById('medicamentos-permanentes').value = '';
+            document.getElementById('monto-factura').value = '';
+            fotoGastoInput.value = '';
+            uploadedFiles = null;
+            fotoPreviewContainer.classList.add('hidden');
+            fotoPreviewContainer.innerHTML = '';
+            medicamentosPermanentesContainer.classList.add('hidden');
+        };
+
+        gastoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (getUserRole() !== 'admin') { showStatus('Acceso denegado: Solo Administradores pueden guardar datos.', true); return; }
+
+            const expenseJsonData = {
+                titularId: document.getElementById('buscador-cedula').value,
+                beneficiarioId: gastoParaSelect.value,
+                fecha: document.getElementById('fecha-gasto').value,
+                factura: document.getElementById('numero-factura').value,
+                farmaciaClinica: document.getElementById('farmacia-clinica').value, 
+                diagnostico: document.getElementById('diagnostico').value,
+                tipoGasto: tipoGastoSelect.value,
+                medicamentos: tipoGastoSelect.value === 'Medicina Permanente' ? document.getElementById('medicamentos-permanentes').value : '',
+                monto: parseFloat(document.getElementById('monto-factura').value),
+            };
+            
+            const metadataJson = JSON.stringify(expenseJsonData);
+            
+            const formData = new FormData();
+            formData.append('metadata', metadataJson);
+
+            if (uploadedFiles) {
+                Array.from(uploadedFiles).forEach((file) => {
+                    formData.append('files', file); 
+                });
+            }
+
+            try {
+                const result = await api.request(`/gastos/upload`, 'POST', formData, true);
+                
+                showStatus(result.message);
+                clearExpenseFields(); 
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        });
+
+        document.getElementById('limpiar-gasto-btn').addEventListener('click', () => {
+            buscadorCedulaGasto.value = '';
+            gastoFormContainer.classList.add('hidden');
+            clearExpenseFields(); 
+        });
+        
+        const reporteTbody = document.getElementById('reporte-gastos-tbody');
+        const filtroTipoGasto = document.getElementById('filtro-tipo-gasto');
+        const filtroVicerrectorado = document.getElementById('filtro-vicerrectorado');
+        const filtroCondicion = document.getElementById('filtro-condicion');
+        const gastosChartCanvas = document.getElementById('gastos-chart');
+        const exportCsvBtn = document.getElementById('export-csv-btn'); 
+        let reportDataCache = []; 
+        let gastosChart;
+
+        const generarReporte = async () => {
+            if (!isAuthenticated()) { return; }
+            try {
+                const filtroGasto = filtroTipoGasto.value;
+                const filtroVpds = filtroVicerrectorado.value;
+                const filtroCond = filtroCondicion.value;
+                
+                const queryParams = new URLSearchParams({
+                    tipo_gasto: filtroGasto,
+                    vicerrectorado: filtroVpds,
+                    condicion: filtroCond
+                }).toString();
+                
+                const gastosFiltrados = await api.request(`/reportes/gastos?${queryParams}`);
+                
+                reportDataCache = gastosFiltrados; 
+
+                reporteTbody.innerHTML = '';
+                gastosFiltrados.forEach(gasto => {
+                    const row = document.createElement('tr');
+                    row.className = 'table-row hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td>${gasto.titular_cedula}</td>
+                        <td>${gasto.titular_nombre} ${gasto.titular_apellido}</td>
+                        <td>${gasto.vicerrectorado}</td>
+                        <td>${gasto.condicion}</td>
+                        <td>${gasto.fecha_gasto}</td>
+                        <td>${gasto.tipo_gasto}</td>
+                        <td class="text-right">${formatCurrency(gasto.monto)} Bs</td>
+                    `;
+                    reporteTbody.appendChild(row);
+                });
+                renderGastosChart(gastosFiltrados);
+            } catch (error) {
+                console.error("Error al cargar el reporte:", error);
+            }
+        };
+
+        const exportToCSV = () => {
+            if (reportDataCache.length === 0) {
+                openActionModal('Exportación Fallida', 'No hay datos en la tabla para exportar.', 'Aceptar', null, true);
+                return;
+            }
+
+            const headers = [
+                "Nombre y Apellido", 
+                "Vicerrectorado", 
+                "Año", 
+                "Mes", 
+                "Condicion", 
+                "Tipo de Gasto", 
+                "Monto"
+            ];
+            
+            const csvRows = [];
+            csvRows.push(headers.join(';')); 
+
+            reportDataCache.forEach(gasto => {
+                const date = new Date(gasto.fecha_gasto);
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                
+                const monto_limpio = formatCurrency(gasto.monto).replace(/\./g, '').replace(/,/g, '.');
+
+                const row = [
+                    `${gasto.titular_nombre} ${gasto.titular_apellido}`,
+                    gasto.vicerrectorado,
+                    year,
+                    month,
+                    gasto.condicion,
+                    gasto.tipo_gasto,
+                    monto_limpio
+                ];
+                csvRows.push(row.join(';'));
+            });
+
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) { 
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `reporte_gastos_${Date.now()}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                showStatus('Su navegador no soporta la descarga automática. Intente copiar los datos.', true);
+            }
+        };
+
+        exportCsvBtn.addEventListener('click', exportToCSV);
+
+
+        const renderGastosChart = (gastos) => {
+            if (gastosChart) gastosChart.destroy();
+            const tipoGastoData = gastos.reduce((acc, gasto) => {
+                acc[gasto.tipo_gasto] = (acc[gasto.tipo_gasto] || 0) + gasto.monto;
+                return acc;
+            }, {});
+
+            const labels = Object.keys(tipoGastoData);
+            const data = Object.values(tipoGastoData);
+
+            gastosChart = new Chart(gastosChartCanvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Monto Total por Tipo de Gasto (Bs)',
+                        data: data,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        };
+
+        const buscadorCedulaReporte = document.getElementById('buscador-cedula-reporte');
+        const buscarReporteBtn = document.getElementById('buscar-reporte-btn');
+        const gastosTitularResultado = document.getElementById('gastos-titular-resultado');
+        const titularNombreReporte = document.getElementById('titular-nombre-reporte');
+        const gastosTitularTbody = document.getElementById('gastos-titular-tbody');
+        const medicamentosPermanentesList = document.getElementById('medicamentos-permanentes-list');
+        const adminReportButton = document.getElementById('admin-report-button');
+        const gastosTitularMensualChartCanvas = document.getElementById('gastos-titular-mensual-chart');
+        let gastosTitularMensualChart;
+
+
+        buscarReporteBtn.addEventListener('click', async () => {
+            if (!isAuthenticated()) { showStatus('Debe iniciar sesión para realizar esta acción.', true); return; }
+            
+            let cedula = buscadorCedulaReporte.value.trim();
+            const query = cedula; 
+            const role = getUserRole();
+            const loggedInCedula = getUserCedula();
+            
+            if (role === 'titular_view') {
+                cedula = loggedInCedula;
+                if (!cedula) {
+                     showStatus('Error: Cédula de usuario no disponible.', true); 
+                     return;
+                }
+            } else if (!query) {
+                showStatus('Por favor, ingrese Cédula, Nombre o Apellido.', true);
+                return;
+            }
+
+            try {
+                const titularRes = await api.request(`/titulares/${query}`);
+                
+                let finalCedula = titularRes.cedula; 
+                let titularNombreCompleto = `${finalCedula} (Cuenta)`;
+                
+                if (titularRes.cedula) {
+                    titularNombreCompleto = `${titularRes.nombre} ${titularRes.apellido}`;
+                } else if (role !== 'titular_view' || query !== loggedInCedula) {
+                     showStatus(titularRes.message, true);
+                     gastosTitularResultado.classList.add('hidden');
+                     adminReportButton.classList.add('hidden');
+                     return;
+                }
+
+                const gastosTitular = await api.request(`/gastos/${finalCedula}`);
+
+                gastosTitularResultado.classList.remove('hidden');
+                titularNombreReporte.textContent = titularNombreCompleto;
+                
+                if (role === 'admin') {
+                    adminReportButton.classList.remove('hidden');
+                    adminReportButton.onclick = () => generarReporteProblema(finalCedula, titularNombreCompleto);
+                } else {
+                    adminReportButton.classList.add('hidden');
+                }
+
+                expenseCache = {}; 
+                gastosTitular.forEach(g => expenseCache[g.id] = g);
+
+                renderGastosTitular(gastosTitular);
+                renderGastosTitularMensualChart(gastosTitular); 
+                showStatus(`Búsqueda completada para ${titularNombreCompleto}.`);
+
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        });
+
+        const updateGastoStatus = async (gastoId, nuevoEstado) => {
+            if (getUserRole() !== 'admin') { return; } 
+
+             try {
+                const result = await api.request(`/gastos/estado/${gastoId}`, 'PUT', { estado: nuevoEstado });
+
+                showStatus(result.message);
+                buscarReporteBtn.click(); 
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        };
+
+        const saveAdminMessage = async (gastoId, nuevoMensaje) => {
+            if (getUserRole() !== 'admin') { return; } 
+
+             try {
+                const result = await api.request(`/gastos/mensaje/${gastoId}`, 'PUT', { mensaje: nuevoMensaje });
+
+                showStatus(result.message);
+                buscarReporteBtn.click();
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        };
+
+        const generarReporteProblema = async (cedulaTitular, nombreTitular) => {
+            const userCedula = getUserCedula();
+            
+            const actionCallback = async () => {
+                const reportDetails = `Problema detectado por ADMIN (${userCedula}) en la búsqueda de titular. Titular afectado: ${nombreTitular}, Cédula: ${cedulaTitular}. Favor revisar consistencia de datos.`;
+                
+                try {
+                    const result = await api.request(`/reportar_error`, 'POST', { details: reportDetails });
+                    
+                    showStatus(result.message, false);
+                } catch (error) {
+                    showStatus(error.message, true);
+                }
+            };
+            
+            openActionModal(
+                'Confirmar Reporte de Problema',
+                `¿Desea generar un reporte de problema para el titular ${nombreTitular} (${cedulaTitular})?`,
+                'Generar Reporte',
+                actionCallback,
+                false 
+            );
+        };
+
+
+        const renderGastosTitular = (gastosTitular) => {
+            gastosTitularTbody.innerHTML = '';
+            const medicamentos = new Set();
+            const role = getUserRole();
+            
+            if (gastosTitular.length === 0) {
+                gastosTitularTbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">No se encontraron gastos para este titular.</td></tr>`;
+                return;
+            }
+
+            gastosTitular.forEach(gasto => {
+                const hasFiles = gasto.fotos && gasto.fotos.length > 0;
+                const hasAdminMessage = gasto.mensaje_admin && gasto.mensaje_admin.trim() !== '';
+
+                let estadoHtml;
+                let mensajeHtml = gasto.mensaje_admin || '---';
+                let emoticon = hasAdminMessage ? '⚠️' : '✅';
+
+
+                if (role === 'admin') {
+                    const options = ESTADOS_GASTO.map(estado => 
+                        `<option value="${estado}" ${gasto.estado === estado ? 'selected' : ''}>${estado}</option>`
+                    ).join('');
+                    
+                    estadoHtml = `
+                        <select class="status-select" id="status-${gasto.id}" onchange="updateGastoStatus(${gasto.id}, this.value)">
+                            ${options}
+                        </select>
+                        <textarea class="form-textarea mt-1 text-xs" id="mensaje-admin-${gasto.id}" placeholder="Mensaje Admin">${mensajeHtml}</textarea>
+                        <button class="btn-primary mt-1 px-2 py-1 text-xs" onclick="saveAdminMessage(${gasto.id}, document.getElementById('mensaje-admin-${gasto.id}').value)">Guardar Mensaje</button>
+                    `;
+                    mensajeHtml = ''; 
+                } else {
+                    estadoHtml = `<span class="font-semibold">${gasto.estado || 'Recibido'}</span>`;
+                    mensajeHtml = `<span class="text-xs">${mensajeHtml}</span>`;
+                }
+
+
+                const row = document.createElement('tr');
+                row.className = 'table-row hover:bg-gray-50';
+                row.innerHTML = `
+                    <td>${gasto.fecha_gasto}</td>
+                    <td>${gasto.tipo_gasto}</td>
+                    <td class="text-right">${formatCurrency(gasto.monto)} Bs</td>
+                    <td>${emoticon} ${mensajeHtml}</td>
+                    <td>${estadoHtml}</td>
+                    <td>
+                        ${hasFiles ? 
+                            `<button class="btn-secondary px-3 py-1 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200" onclick="openModal('${gasto.titular_cedula}', '${gasto.fecha_gasto}', ${gasto.id})">Ver Fotos (${gasto.fotos.length})</button>` : 
+                            `<span class="text-gray-400 text-sm">N/A</span>`
+                        }
+                    </td>
+                `;
+                gastosTitularTbody.appendChild(row);
+                if (gasto.tipo_gasto === 'Medicina Permanente' && gasto.medicamentos_permanentes) {
+                    gasto.medicamentos_permanentes.split(',').forEach(m => medicamentos.add(m.trim()));
+                }
+            });
+            medicamentosPermanentesList.textContent = medicamentos.size > 0 ? Array.from(medicamentos).join(', ') : 'Ninguno';
+        };
+
+        const renderGastosTitularMensualChart = (gastos) => {
+            if (gastosTitularMensualChart) gastosTitularMensualChart.destroy();
+            
+            const monthlyData = gastos.reduce((acc, gasto) => {
+                const date = new Date(gasto.fecha_gasto);
+                const monthIndex = date.getMonth(); 
+                acc[monthIndex] = (acc[monthIndex] || 0) + gasto.monto;
+                return acc;
+            }, {});
+
+            const labels = [];
+            const data = [];
+            for (let i = 0; i < 12; i++) {
+                labels.push(MESES[i]);
+                data.push(monthlyData[i] || 0);
+            }
+
+            gastosTitularMensualChart = new Chart(gastosTitularMensualChartCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Monto de Gasto Mensual (Bs)',
+                        data: data,
+                        backgroundColor: 'rgba(168, 85, 247, 0.5)',
+                        borderColor: 'rgba(168, 85, 247, 1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Monto (Bs)' } },
+                        x: { title: { display: true, text: 'Mes' } }
+                    }
+                }
+            });
+        };
+
+
+        const expenseModal = document.getElementById('expense-modal');
+        const modalPhotosContainer = document.getElementById('modal-photos');
+        const modalNoPhotos = document.getElementById('modal-no-photos');
+        const modalGastoInfo = document.getElementById('modal-gasto-info');
+        const imageViewerModal = document.getElementById('image-viewer-modal');
+        const viewerImage = document.getElementById('viewer-image');
+        const viewerTitle = document.getElementById('viewer-title');
+        let expenseCache = {}; 
+
+        const openModal = (titularCedula, fechaGasto, gastoId) => {
+            const gasto = expenseCache[gastoId];
+
+            if (!gasto || (!gasto.fotos && !gasto.carga_familiar_pdf)) {
+                modalPhotosContainer.innerHTML = '';
+                modalGastoInfo.textContent = `Titular ${titularCedula} - Fecha: ${fechaGasto}`;
+                modalNoPhotos.classList.remove('hidden');
+                expenseModal.style.display = 'flex';
+                return;
+            }
+            
+            modalPhotosContainer.innerHTML = '';
+            modalGastoInfo.textContent = `Titular ${titularCedula} - Fecha: ${fechaGasto}`;
+            
+            let hasFiles = false;
+
+            if (gasto.fotos && gasto.fotos.length > 0) { 
+                hasFiles = true;
+                gasto.fotos.forEach(path => {
+                    const div = document.createElement('div');
+                    const filename = path.split('/').pop(); 
+                    
+                    div.className = 'bg-gray-200 p-2 rounded-lg text-center text-xs text-gray-700 truncate hover:bg-gray-300 transition-colors cursor-pointer';
+                    div.setAttribute('onclick', `openImageViewer('${filename}', false)`); 
+
+                    div.innerHTML = `<img src="${API_URL}/uploads/${filename}" onerror="this.onerror=null;this.src='https://placehold.co/100x100/9ca3af/ffffff?text=FILE'" class="w-full h-auto rounded-md mb-1"/> <span>${filename}</span>`;
+                    div.title = `Clic para ver ${filename}`;
+
+                    modalPhotosContainer.appendChild(div);
+                });
+            }
+
+            if (gasto.carga_familiar_pdf) {
+                 hasFiles = true;
+                 const filename = gasto.carga_familiar_pdf.split('/').pop(); 
+
+                 const div = document.createElement('a'); 
+                 div.href = `${API_URL}/uploads/${filename}`;
+                 div.target = '_blank'; 
+                 div.download = filename; 
+                 
+                 div.className = 'bg-red-200 p-2 rounded-lg text-center text-xs text-red-800 truncate hover:bg-red-300 transition-colors cursor-pointer';
+                 
+                 div.innerHTML = `<img src="https://placehold.co/100x100/fecaca/881c1c?text=PDF" class="w-full h-auto rounded-md mb-1"/> <span>${filename}</span>`;
+                 div.title = `Clic para descargar PDF`;
+                 modalPhotosContainer.appendChild(div);
+            }
+
+
+            if (hasFiles) {
+                modalNoPhotos.classList.add('hidden');
+            } else {
+                 modalNoPhotos.classList.remove('hidden');
+            }
+
+            expenseModal.style.display = 'flex';
+        };
+
+        const openImageViewer = (filename, isPdf = false) => {
+             if (isPdf) return; 
+
+             expenseModal.style.display = 'none';
+
+             viewerTitle.textContent = `Visualizando Factura: ${filename}`;
+             const imageUrl = `${API_URL}/uploads/${filename}`;
+             viewerImage.src = imageUrl; 
+             
+             viewerImage.onerror = () => {
+                 viewerImage.src = `https://placehold.co/800x600/9ca3af/000000?text=FACTURA+NO+ENCONTRADA`;
+                 viewerTitle.textContent = `Visualizando: ${filename} (ARCHIVO NO ENCONTRADO EN DISCO)`;
+             };
+            
+             imageViewerModal.style.display = 'flex';
+        };
+
+        const closeImageViewer = () => {
+              imageViewerModal.style.display = 'none';
+        };
+
+        const closeModal = () => {
+            expenseModal.style.display = 'none';
+        };
+        
+        window.onclick = (event) => {
+            if (event.target === expenseModal) {
+                closeModal();
+            }
+            if (event.target === imageViewerModal) {
+                closeImageViewer();
+            }
+            if (event.target === actionConfirmModal) {
+                closeActionModal();
+            }
+            if (event.target === passwordChangeModal) {
+                 closePasswordModal();
+            }
+        };
+
+        const errorReportForm = document.getElementById('error-report-form');
+
+        errorReportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!isAuthenticated()) { showStatus('Debe iniciar sesión para reportar un error.', true); return; }
+
+            const details = document.getElementById('error-details').value;
+            
+            try {
+                const result = await api.request(`/reportar_error`, 'POST', { details: details });
+                
+                showStatus(result.message, false);
+                errorReportForm.reset();
+
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        });
+
+        const resetDataBtn = document.getElementById('reset-data-btn');
+
+        resetDataBtn.addEventListener('click', () => {
+            openActionModal(
+                'PELIGRO: Resetear Datos',
+                'Esta acción eliminará todos los Titulares, Familiares y Gastos asociados a su cuenta de Administrador de forma PERMANENTE. ¿Desea continuar?',
+                'SÍ, ELIMINAR DATOS',
+                resetDataAction,
+                true 
+            );
+        });
+
+        const resetDataAction = async () => {
+            try {
+                const result = await api.request(`/mantenimiento/reset_data`, 'DELETE');
+                showStatus(result.message, false);
+                logoutBtn.click(); 
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        };
+
+
+        const dolarOficialEl = document.getElementById('dolar-oficial');
+        const totalGastosBsEl = document.getElementById('total-gastos-bs');
+        const totalGastosUsdEl = document.getElementById('total-gastos-usd');
+        const devolucionEstimadaEl = document.getElementById('devolucion-estimada'); 
+        const impactoDolarSimuladoEl = document.getElementById('impacto-dolar-simulado'); 
+        const TASA_HISTORICA_SIMULADA = 100.00; 
+        const gastosTipoChartCanvas = document.getElementById('gastos-tipo-chart');
+        const diagnosticosChartCanvas = document.getElementById('diagnosticos-chart');
+        const filtroYear = document.getElementById('filtro-year');
+        const filtroMonth = document.getElementById('filtro-month');
+        const reporteVicerrectoradoTbody = document.getElementById('reporte-vicerrectorado-tbody');
+        const reporteCondicionTbody = document.getElementById('reporte-condicion-tbody');
+        const DEVOLUCION_RATE = 0.80; 
+        let gastosTipoChart, diagnosticosChart;
+
+        const populateYearFilter = async () => {
+            if (!isAuthenticated()) return;
+            try {
+                const gastos = await api.request(`/reportes/gastos`);
+                if (!Array.isArray(gastos)) throw new Error('Invalid data format');
+
+                const years = new Set(gastos.map(g => new Date(g.fecha_gasto).getFullYear()));
+                
+                filtroYear.innerHTML = '<option value="todos">Todos los años</option>';
+                years.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    filtroYear.appendChild(option);
+                });
+                filtroYear.value = new Date().getFullYear();
+                filtroYear.addEventListener('change', generarEstadisticas);
+                filtroMonth.addEventListener('change', generarEstadisticas);
+                generarEstadisticas();
+            } catch (error) {
+                console.error('Error al cargar filtros de año:', error);
+                generarEstadisticas();
+            }
+        };
+
+        const fetchDolar = async () => {
+            try {
+                const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                if (data && data.promedio !== undefined && typeof data.promedio === 'number') {
+                    dolarOficialEl.textContent = `${formatCurrency(data.promedio)} Bs`;
+                    return data.promedio;
+                } else {
+                    dolarOficialEl.textContent = 'No disponible';
+                    return null;
+                }
+            } catch (error) {
+                dolarOficialEl.textContent = 'Error al cargar';
+                return null;
+            }
+        };
+
+        // --- FUNCIÓN GENERAR ESTADÍSTICAS REPARADA (en index.html) ---
+
+const generarEstadisticas = async () => {
+    if (!isAuthenticated()) return;
+    
+    // 1. OBTENER LA TASA DE CAMBIO (Del API externo)
+    const dolar = await fetchDolar();
+    const TASA_HISTORICA_SIMULADA = 100.00; // Ref. fija del HTML
+    
+    const selectedYear = filtroYear.value;
+    const selectedMonth = filtroMonth.value;
+
+    try {
+        // 2. OBTENER DATOS CONSOLIDADOS DEL BACKEND
+        const queryParams = new URLSearchParams({
+            year: selectedYear,
+            month: selectedMonth
+        }).toString();
+        
+        const stats = await api.request(`/reportes/estadisticas?${queryParams}`);
+        
+        const totalGastosBs = stats.total_gastos_bs;
+        totalGastosBsEl.textContent = `${formatCurrency(totalGastosBs)} Bs`;
+        
+        let totalGastosUsd = 0;
+        if (dolar) {
+            totalGastosUsd = totalGastosBs / dolar;
+            totalGastosUsdEl.textContent = `${formatCurrency(totalGastosUsd)} USD`;
+            devolucionEstimadaEl.textContent = `${formatCurrency(totalGastosUsd * DEVOLUCION_RATE)} USD`;
+            
+            // Cálculo de Impacto
+            const valorActualUSD = totalGastosBs / dolar;
+            const valorHistoricoUSD = totalGastosBs / TASA_HISTORICA_SIMULADA;
+            const impacto = valorActualUSD - valorHistoricoUSD;
+
+            const impactoClase = impacto > 0 ? 'text-green-600' : 'text-red-600';
+            const impactoSigno = impacto > 0 ? 'Ganancia' : 'Pérdida';
+            
+            impactoDolarSimuladoEl.className = `text-2xl font-extrabold mt-2 ${impactoClase}`;
+            impactoDolarSimuladoEl.textContent = `${impactoSigno}: ${formatCurrency(Math.abs(impacto))} USD`;
+
+
+            // Generar Tablas de Desglose
+            renderDesgloseTablas(stats.vicerrectorado_data, stats.condicion_data, dolar);
+
+        } else {
+            totalGastosUsdEl.textContent = 'No disponible';
+            devolucionEstimadaEl.textContent = 'N/A';
+            impactoDolarSimuladoEl.className = `text-2xl font-extrabold mt-2 text-gray-500`;
+            impactoDolarSimuladoEl.textContent = 'No disponible';
+            reporteVicerrectoradoTbody.innerHTML = '';
+            reporteCondicionTbody.innerHTML = '';
+        }
+
+        // 3. Renderizar Gráficos (Usando los datos agregados del backend)
+        
+        // Diagnósticos
+        renderChart(diagnosticosChart, diagnosticosChartCanvas, 'bar', 'Casos por Diagnóstico', 
+            Object.keys(stats.diagnostico_data), Object.values(stats.diagnostico_data), 'rgba(255, 159, 64, 0.7)');
+
+        // Gastos por tipo
+        const tipoGastoLabels = Object.keys(stats.tipo_gasto_data);
+        const tipoGastoData = Object.values(stats.tipo_gasto_data);
+        renderChart(gastosTipoChart, gastosTipoChartCanvas, 'pie', 'Distribución de Gastos', tipoGastoLabels, tipoGastoData, [
+            'rgba(59, 130, 246, 0.7)', 'rgba(168, 85, 247, 0.7)', 'rgba(34, 197, 94, 0.7)', 'rgba(249, 115, 22, 0.7)', 'rgba(239, 68, 68, 0.7)', 'rgba(12, 74, 110, 0.7)', 'rgba(16, 185, 129, 0.7)'
+        ]);
+
+    } catch (error) {
+        console.error('Error al obtener estadísticas:', error);
+        showStatus('Error al cargar estadísticas.', true);
+    }
+};
+
+// --- NUEVA FUNCIÓN DE RENDERIZADO DE TABLAS EN INDEX.HTML ---
+const renderDesgloseTablas = (vpdsData, condicionData, dolarRate) => {
+    
+    // 1. Desglose por Vicerrectorado
+    reporteVicerrectoradoTbody.innerHTML = '';
+    for (const vpds in vpdsData) {
+        const montoBs = vpdsData[vpds];
+        const montoUsd = montoBs / dolarRate;
+        const row = document.createElement('tr');
+        row.className = 'table-row hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="font-semibold">${vpds}</td>
+            <td class="text-right">${formatCurrency(montoBs)} Bs</td>
+            <td class="text-right">${formatCurrency(montoUsd)} USD</td>
+        `;
+        reporteVicerrectoradoTbody.appendChild(row);
+    }
+
+    // 2. Desglose por Condición y Devolución
+    reporteCondicionTbody.innerHTML = '';
+    for (const condicion in condicionData) {
+        const montoBs = condicionData[condicion];
+        const montoUsd = montoBs / dolarRate;
+        const devolucionUsd = montoUsd * DEVOLUCION_RATE;
+        const row = document.createElement('tr');
+        row.className = 'table-row hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="font-semibold">${condicion}</td>
+            <td class="text-right">${formatCurrency(montoUsd)} USD</td>
+            <td class="text-right font-bold text-yellow-700">${formatCurrency(devolucionUsd)} USD</td>
+        `;
+        reporteCondicionTbody.appendChild(row);
+    }
+};
+        
+
+
+        const renderChart = (chart, canvas, type, title, labels, data, backgroundColor) => {
+            if (chart) chart.destroy();
+            new Chart(canvas, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: title,
+                        data: data,
+                        backgroundColor: backgroundColor,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: title }
+                    },
+                    scales: type === 'bar' ? { y: { beginAtZero: true } } : {}
+                }
+            });
+        };
+    </script>
+</body>
+</html>

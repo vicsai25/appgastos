@@ -1,0 +1,3 @@
+# Instalar gunicorn si no está en requirements.txt: pip install gunicorn
+# Ejecutar la aplicación Flask usando Gunicorn
+gunicorn server:app

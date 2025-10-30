@@ -1,0 +1,8 @@
+Flask
+    Flask-Cors
+    passlib
+    pyjwt
+    gunicorn  # Servidor HTTP para producción
+    werkzeug # Utilidades de archivos
+    psycopg2-binary # Opcional: Si usas PostgreSQL (Recomendado sobre SQLite para producción)
+    
